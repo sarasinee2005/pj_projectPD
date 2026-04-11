@@ -22,7 +22,7 @@ export default [
       },
       {
         title: '02',
-        route: 'inbound-page',
+        route: 'Chart',
       },
     ],
   },

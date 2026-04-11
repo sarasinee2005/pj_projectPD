@@ -9,7 +9,7 @@ export const $themeBreakpoints = {}
 // APP CONFIG
 export const $themeConfig = {
   app: {
-    appName: 'PJ-Wood', // Will update name in navigation menu (Branding)
+    appName: 'PJ-Wood', // Will update name in navigation menu (Branding)1
     // eslint-disable-next-line global-require
     appLogoImage: require('@/assets/images/logo/PJ-logo.jpg'), // Will update logo in navigation menu (Branding)
   },

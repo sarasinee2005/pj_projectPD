@@ -23,9 +23,8 @@ const router = new VueRouter({
           },
         ],
       },
-    },
-    
-    {
+  },
+      {
       path: '/login',
       name: 'login',
       component: () => import('@/views/Login.vue'),
@@ -49,6 +48,16 @@ const router = new VueRouter({
     path: 'Dashborad/',      
     name: 'Dashborad',     
     component: () => import('@/views/Dashborad.vue'), 
+    },
+    {
+    path: 'test/',      
+    name: 'test',     
+    component: () => import('@/views/test.vue'), 
+    },
+        {
+    path: 'Chart/',      
+    name: 'Chart',     
+    component: () => import('@/views/Chart.vue'), 
     },
     {
     path: 'test/',      
