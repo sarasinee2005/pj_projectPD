@@ -41,7 +41,11 @@ export default [
    route: 'Submit-product',
    icon: 'CircleIcon',
   },
-
+{
+   title: 'Check stock',
+   route: 'Check-stock',
+   icon: 'CircleIcon',
+  },
   {
    title: 'GameOnlyAdmin',
    route: 'GameOnlyAdmin',

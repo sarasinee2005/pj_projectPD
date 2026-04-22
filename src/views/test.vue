@@ -1,5 +1,6 @@
  
 <template>
+
    <b-row>
     <!-- basic select -->
     <b-col md="6">

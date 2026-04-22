@@ -9,35 +9,41 @@
         </b-button>
       </div>
 
-      <b-row class="mb-2">
-        <b-col md="9">
-          <b-form-group label="🔍 ค้นหาและเลือกรายการ (เรียงตามชื่อสินค้า):">
+      <b-row class="mb-3">
+        <b-col md="12">
+          <b-form-group>
+            <template #label>
+              <span class="text-primary font-weight-bold" style="font-size: 1.1rem;">
+                🔍 ค้นหา (PO | SAP | รายการ | สี):
+              </span>
+            </template>
+            
             <v-select
-              v-model="selectedPlan"
+              v-model="searchTemp"
               :options="allPlans"
               label="display"
-              placeholder="ค้นหาPO,FG code หรือชื่อสินค้า"
-              @input="calculateBOM"
-              class="bg-white shadow-sm"
+              placeholder="พิมพ์เลข PO, SAP หรือชื่อรายการ..."
+              @input="handleSelect"
+              class="bg-white shadow-sm custom-v-select"
             >
               <template #no-options="{ search }">
                 {{ search.length ? 'ไม่พบข้อมูล "' + search + '"' : 'กรุณาพิมพ์เพื่อค้นหา' }}
               </template>
             </v-select>
-          </b-form-group>
-        </b-col>
-        
-        <b-col md="3">
-          <div class="target-card-fixed shadow-sm border-primary">
-            <div class="target-label">เป้าหมายผลิต </div>
-            <div class="target-value text-primary">
-              {{ targetQty.toLocaleString() }} <small>ตัว</small>
+
+            <div v-if="selectedPlan" class="mt-2 px-3 py-2 bg-white border rounded shadow-sm d-flex justify-content-between align-items-center" style="border-color: #e2e8f0 !important;">
+              <span class="text-secondary" style="font-size: 0.95rem;">
+                PO: {{ selectedPlan.po }} | SAP: {{ selectedPlan.sap }} | {{ selectedPlan.name }}
+              </span>
+              <span @click="clearSelection" style="cursor: pointer; font-size: 1.5rem; line-height: 0.5; color: #a0aec0; font-weight: bold;" title="ยกเลิกรายการนี้">
+                &times;
+              </span>
             </div>
-          </div>
+          </b-form-group>
         </b-col>
       </b-row>
 
-      <b-button variant="dark" block class="mb-3 font-weight-bold shadow-sm" @click="printOrder">
+      <b-button variant="dark" block class="mb-3 font-weight-bold shadow-sm" @click="printOrder" :disabled="!selectedPlan">
         🖨️ พิมพ์ใบสั่งผลิตชิ้นส่วน (A4)
       </b-button>
 
@@ -70,6 +76,9 @@
             </tr>
             <tr v-if="selectedPlan && tableData.length === 0">
               <td colspan="7" class="text-center py-5">❌ ไม่พบข้อมูลชิ้นส่วนประกอบสำหรับ SAP นี้</td>
+            </tr>
+            <tr v-if="!selectedPlan">
+              <td colspan="7" class="text-center py-5 text-muted">🔍 กรุณาค้นหาและเลือกรายการผลิตด้านบน</td>
             </tr>
           </tbody>
         </table>
@@ -140,7 +149,8 @@ export default {
       allPlans: [],
       stockMap: {},
       bomDatabase: {},
-      selectedPlan: null,
+      searchTemp: null, 
+      selectedPlan: null, 
       targetQty: 0,
       tableData: []
     }
@@ -158,22 +168,22 @@ export default {
           axios.get(urlPlan), axios.get(urlStock), axios.get(urlBOM)
         ])
         
-        // 1. Map Stock
+        // ใช้ตัวแปรชั่วคราวเพื่อรับค่าก่อน
+        const tempStockMap = {}
         const sLines = resStock.data.split(/\r?\n/)
-        this.stockMap = {}
         sLines.forEach((line, i) => {
           if (i === 0 || !line) return
           const cols = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/)
           const code = (cols[1] || "").replace(/"/g, '').trim()
           const val = (cols[7] || "0").replace(/[",]/g, '').trim()
-          if (code) this.stockMap[code] = parseInt(val) || 0
+          if (code) tempStockMap[code] = parseInt(val) || 0
         })
+        // **ใช้ Object.freeze() ลดการกินทรัพยากรของ Vue**
+        this.stockMap = Object.freeze(tempStockMap)
 
-        // 2. Map BOM with Fill Down Logic
+        const tempDB = {}
         const bLines = resBOM.data.split(/\r?\n/)
-        const db = {}
         let lastSap = ""
-        
         bLines.forEach((line, i) => {
           if (i === 0 || !line) return
           const c = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/)
@@ -181,17 +191,15 @@ export default {
           const pCode = (c[2] || "").replace(/"/g, '').trim()
           const pName = (c[3] || "").replace(/"/g, '').trim()
           const qty = parseFloat((c[5] || "0").replace(/[",]/g, '')) || 0
-
           if (currentSap) { lastSap = currentSap }
-          
           if (lastSap && pCode) {
-            if (!db[lastSap]) db[lastSap] = []
-            db[lastSap].push({ code: pCode, name: pName, perUnit: qty })
+            if (!tempDB[lastSap]) tempDB[lastSap] = []
+            tempDB[lastSap].push({ code: pCode, name: pName, perUnit: qty })
           }
         })
-        this.bomDatabase = db
+        // **ใช้ Object.freeze()**
+        this.bomDatabase = Object.freeze(tempDB)
 
-        // 3. Map Plan and SORT BY NAME (จัดหมวดหมู่)
         const pLines = resPlan.data.split(/\r?\n/)
         const unsortedPlans = pLines.slice(1).map(line => {
           if (!line) return null
@@ -204,27 +212,45 @@ export default {
             po, sap, name, 
             color: (c[7] || "").replace(/"/g, '').trim(),
             qty: parseInt((c[8] || "0").replace(/[",]/g, '')) || 0,
-            display: `[${name}] PO: ${po} | SAP: ${sap}`
+            display: `PO: ${po} | SAP: ${sap} | ${name}`
           }
         }).filter(v => v !== null)
 
-        // เรียงลำดับตามชื่อ (Alphabetical Sort) เพื่อให้สินค้าหมวดเดียวกันอยู่ติดกัน
-        this.allPlans = unsortedPlans.sort((a, b) => a.name.localeCompare(b.name, 'th'))
+        // **ใช้ Object.freeze() ทำให้การพิมพ์ค้นหาลื่นไหลขึ้น 100%**
+        this.allPlans = Object.freeze(unsortedPlans.sort((a, b) => a.name.localeCompare(b.name, 'th')))
 
       } catch (err) { console.error(err) } finally { this.loading = false }
     },
+    handleSelect(val) {
+      if (val) {
+        this.selectedPlan = val;
+        this.calculateBOM(val);
+        // ใช้ setTimeout เพื่อให้ Vue เรนเดอร์ตัวเลือกเสร็จก่อน ค่อยเคลียร์ช่องค้นหา ป้องกันระบบลูปค้าง
+        setTimeout(() => {
+          this.searchTemp = null;
+        }, 50);
+      }
+    },
+    clearSelection() {
+      this.selectedPlan = null;
+      this.searchTemp = null;
+      this.tableData = [];
+      this.targetQty = 0;
+    },
     calculateBOM(val) {
-      if (!val) { this.tableData = []; this.targetQty = 0; return }
+      if (!val) return;
       this.targetQty = val.qty
       const components = this.bomDatabase[val.sap] || []
-      this.tableData = components.map(item => {
+      
+      // ใช้ Object.freeze() สำหรับตารางที่แสดงผลด้วย ป้องกันการกระตุก
+      this.tableData = Object.freeze(components.map(item => {
         const need = item.perUnit * this.targetQty
         const stock = this.stockMap[item.code] || 0
         return {
           partCode: item.code, itemName: item.name, perUnit: item.perUnit,
           totalNeed: need, stock: stock, toProduce: Math.max(0, need - stock)
         }
-      })
+      }))
     },
     printOrder() { window.print() }
   }
@@ -233,11 +259,36 @@ export default {
 
 <style lang="scss" scoped>
 @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
-.target-card-fixed {
-  background: #f8f8ff; border: 2px solid #7367f0; border-radius: 12px; padding: 10px; text-align: center; min-height: 110px; display: flex; flex-direction: column; justify-content: center;
-  .target-label { font-size: 0.8rem; font-weight: 600; color: #5e5873; }
-  .target-value { font-size: 2.5rem; font-weight: 800; line-height: 1; }
+@import '~vue-select/dist/vue-select.css';
+
+::v-deep .custom-v-select {
+  .vs__dropdown-toggle {
+    border: 1px solid #d8d6de !important;
+    border-radius: 0.357rem !important;
+    padding: 6px 8px !important;
+    min-height: 42px;
+    background-color: #fff;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s ease;
+  }
+  &.vs--open .vs__dropdown-toggle {
+    border-color: #7367f0 !important;
+    box-shadow: 0 3px 10px 0 rgba(34, 41, 47, 0.1) !important;
+  }
+  .vs__search { margin-top: 0 !important; font-size: 0.95rem; color: #6e6b7b; }
+  .vs__search::placeholder { color: #b9b9c3; }
+  .vs__selected-options { display: flex; align-items: center; padding: 0; }
+  .vs__actions { display: flex; align-items: center; padding-top: 0; padding-bottom: 0; }
+  .vs__dropdown-menu {
+    border: 1px solid #d8d6de; border-radius: 0.357rem; box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1); padding: 0; margin-top: 4px;
+    li {
+      padding: 8px 15px; font-size: 0.95rem; color: #6e6b7b;
+      &:hover, &.vs__dropdown-option--highlight { background-color: #f3f2f7; color: #7367f0; }
+    }
+  }
 }
+
 .table-bom {
   width: 100%; border-collapse: collapse;
   th, td { border: 1px solid #dae1e7; padding: 8px; vertical-align: middle; font-size: 0.85rem; }
@@ -245,14 +296,38 @@ export default {
   .bg-gray-light { background-color: #f8f8f8; }
 }
 .print-only { display: none; }
+</style>
+
+<style lang="scss">
 @media print {
   .no-print, nav, aside, footer, header { display: none !important; }
   body * { visibility: hidden; }
+  
   #print-isolation-layer, #print-isolation-layer * { visibility: visible; }
-  #print-isolation-layer { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 0.5cm; }
-  .print-header-info { display: flex; justify-content: space-between; margin-bottom: 10px; p { margin: 0; font-size: 11pt; color: black; } }
-  .print-target-banner { border: 2px solid #000; background: #eee !important; text-align: center; font-size: 1.4rem; font-weight: bold; padding: 10px; -webkit-print-color-adjust: exact; }
-  .table-print { width: 100%; border-collapse: collapse; th, td { border: 1.5px solid #000 !important; padding: 8px 5px; font-size: 10pt; color: black; height: 35px; } th { background: #eee !important; -webkit-print-color-adjust: exact; } }
+  #print-isolation-layer { 
+    display: block !important; 
+    position: absolute; 
+    left: 0; 
+    top: 0; 
+    width: 100%; 
+    padding: 0.5cm; 
+  }
+  
+  .print-header-info { 
+    display: flex; justify-content: space-between; margin-bottom: 10px; 
+    p { margin: 0; font-size: 11pt; color: black; } 
+  }
+  
+  .print-target-banner { 
+    border: 2px solid #000; background: #eee !important; text-align: center; font-size: 1.4rem; font-weight: bold; padding: 10px; -webkit-print-color-adjust: exact; 
+  }
+  
+  .table-print { 
+    width: 100%; border-collapse: collapse; 
+    th, td { border: 1.5px solid #000 !important; padding: 8px 5px; font-size: 10pt; color: black; height: 35px; } 
+    th { background: #eee !important; -webkit-print-color-adjust: exact; } 
+  }
+  
   @page { size: A4 portrait; margin: 1cm; }
 }
 </style>

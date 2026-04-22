@@ -92,7 +92,20 @@ const router = new VueRouter({
         ],
       },
   },
-
+{
+      path: '/Check-stock',
+      name: 'Check-stock',
+      component: () => import('@/views/Check-stock.vue'),
+      meta: {
+        pageTitle: 'Check-stock',
+        breadcrumb: [
+          {
+            text: 'Check-stock',
+            active: true,
+          },
+        ],
+      },
+  },
 {
     path: 'GameOnlyAdmin/',      
     name: 'GameOnlyAdmin',     
