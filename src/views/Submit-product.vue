@@ -56,6 +56,8 @@
             <tr v-if="items.length === 0 && !loading">
               <td colspan="8" class="empty-state">กรุณากดปุ่ม "ดึงข้อมูล"</td>
             </tr>
+
+            
             <tr v-for="(item, index) in items" :key="index">
               <td><span class="badge-green">{{ item.displayDate }}</span></td>
               <td><span class="badge-time">🕒 {{ item.displayTime }}</span></td>
@@ -71,6 +73,8 @@
               <td class="total-value">{{ totalPriceFormatted }}</td>
             </tr>
           </tbody>
+
+
         </table>
       </div>
     </div>

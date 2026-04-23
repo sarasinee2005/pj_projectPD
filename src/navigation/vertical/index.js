@@ -21,9 +21,15 @@ export default [
         route: 'test',
       },
       {
-        title: 'dashboard',
+        title: 'dashboard-Test',
         route: 'Chart',
       },
+      
+      {
+   title: 'Check stock',
+   route: 'Check-stock',
+   icon: 'CircleIcon',
+  },
         {
    title: 'Calculate stock',
    route: 'Calculate-stock',
@@ -41,11 +47,7 @@ export default [
    route: 'Submit-product',
    icon: 'CircleIcon',
   },
-{
-   title: 'Check stock',
-   route: 'Check-stock',
-   icon: 'CircleIcon',
-  },
+
   {
    title: 'GameOnlyAdmin',
    route: 'GameOnlyAdmin',

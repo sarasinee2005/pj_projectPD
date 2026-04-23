@@ -55,15 +55,30 @@ const router = new VueRouter({
     component: () => import('@/views/test.vue'), 
     },
         {
-    path: 'Chart/',      
-    name: 'Chart',     
-    component: () => import('@/views/Chart.vue'), 
+    path: 'dashborad-Test',      
+    name: 'dashboard-Test',     
+    component: () => import('@/views/dashboradTest.vue'), 
     },
     {
     path: 'test/',      
     name: 'test',     
     component: () => import('@/views/test.vue'), 
     },
+    {
+      path: '/Check-stock',
+      name: 'Check-stock',
+      component: () => import('@/views/Check-stock.vue'),
+      meta: {
+        pageTitle: 'Check-stock',
+        breadcrumb: [
+          {
+            text: 'Check-stock',
+            active: true,
+          },
+        ],
+      },
+  },
+  
        {
   path: '/Calculate-stock',
   name: 'Calculate-stock',
@@ -93,20 +108,7 @@ const router = new VueRouter({
         ],
       },
   },
-{
-      path: '/Check-stock',
-      name: 'Check-stock',
-      component: () => import('@/views/Check-stock.vue'),
-      meta: {
-        pageTitle: 'Check-stock',
-        breadcrumb: [
-          {
-            text: 'Check-stock',
-            active: true,
-          },
-        ],
-      },
-  },
+
 {
     path: 'GameOnlyAdmin/',      
     name: 'GameOnlyAdmin',     
